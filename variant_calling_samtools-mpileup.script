@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# The following bash script demonstrates the usage of samtools mpileup which provides a summary of the coverage of mapped reads on a reference sequence at a single base pair resolution, and BCFtools which provides a mechanisim for calling variants.
+
+
+# root
+mkdir mpileup; cd mpileup
+ 
+# clone the BWA repository
+git clone https://github.com/lh3/bwa.git
+cd bwa; make
+cd ..
+ 
+# randomly generate reference and mutated genomes
+mkdir script
+cd script
+git clone https://gist.github.com/3e9c8ae57eded71c84de.git ref
+mv ref/generate_random_seq.pl .
+git clone https://gist.github.com/a5aa7bedf923aa49b0c6.git mut
+mv mut/mutate_fasta.pl .
+git clone https://gist.github.com/fce12a99e514938b5725.git pair
+mv pair/random_paired_end.pl .
+rm -rf ref mut pair
+# I forgot to make some of the scripts executable on the Gist
+chmod 755 *.pl
+ 
+# move back into the root working directory
+cd ..
+script/generate_random_seq.pl 10000 31 > ref.fa
+ 
+script/mutate_fasta.pl ref.fa 0.01 31 > ref_mutated.fa
+script/random_paired_end.pl ref_mutated.fa 100 1000 300 31
+
+# mapping with BWA
+bwa/bwa mem ref.fa l100_n1000_d300_31_1.fq l100_n1000_d300_31_2.fq |
+samtools sort -o l100_n1000_d300_31_1.bam -
+
+# index the BAM file
+samtools index l100_n1000_d300_31_1.bam
+ 
+# obtain some simple statistics
+samtools flagstat l100_n1000_d300_31_1.bam
+
+# samtools mpileup: provides a summary of the coverage of mapped reads on a reference sequence at a single base pair resolution.
+samtools mpileup -f ref.fa -s l100_n1000_d300_31_1.bam |
+sed -n '500,515p'
+
+# Calling SNPs/Indels using BCFtools
+git clone git://github.com/samtools/htslib.git
+git clone git://github.com/samtools/bcftools.git
+cd bcftools
+make
+cd ..
+samtools mpileup -f ref.fa -g l100_n1000_d300_31_1.bam | bcftools/bcftools call -m - > l100_n1000_d300_31_1.vcf
+cat l100_n1000_d300_31_1.vcf |
+grep -v "^#" |
+sed -n '506,510p'
+
