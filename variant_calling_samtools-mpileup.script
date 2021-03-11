@@ -52,7 +52,5 @@ cd bcftools
 make
 cd ..
 samtools mpileup -f ref.fa -g l100_n1000_d300_31_1.bam | bcftools/bcftools call -m - > l100_n1000_d300_31_1.vcf
-cat l100_n1000_d300_31_1.vcf |
-grep -v "^#" |
-sed -n '506,510p'
+cat l100_n1000_d300_31_1.vcf | grep -v "^#" | sed -n '506,510p'
 
